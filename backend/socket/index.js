@@ -1,0 +1,201 @@
+const Meeting = require('../models/Meeting');
+const Whiteboard = require('../models/Whiteboard');
+
+// Track online users per room
+const roomUsers = new Map();
+
+const initSocket = (io) => {
+  io.on('connection', (socket) => {
+    console.log(`Socket connected: ${socket.id}`);
+
+    // ─── Room Management ──────────────────────────────────
+    socket.on('room:join', async ({ roomId, user }) => {
+      socket.join(roomId);
+      socket.roomId = roomId;
+      socket.userData = user;
+
+      // Track user in room
+      if (!roomUsers.has(roomId)) {
+        roomUsers.set(roomId, new Map());
+      }
+      roomUsers.get(roomId).set(socket.id, user);
+
+      // Notify others in room
+      socket.to(roomId).emit('room:user-joined', {
+        user,
+        socketId: socket.id,
+        users: Array.from(roomUsers.get(roomId).values()),
+      });
+
+      // Send current users list to the joiner
+      socket.emit('room:users', {
+        users: Array.from(roomUsers.get(roomId).values()),
+      });
+
+      // Send existing whiteboard data
+      try {
+        const meeting = await Meeting.findOne({ roomId });
+        if (meeting) {
+          const whiteboard = await Whiteboard.findOne({ meeting: meeting._id });
+          if (whiteboard) {
+            socket.emit('whiteboard:load', { strokes: whiteboard.strokes });
+          }
+
+          // Send chat history
+          socket.emit('chat:history', { messages: meeting.chatHistory || [] });
+        }
+      } catch (err) {
+        console.error('Error loading room data:', err.message);
+      }
+    });
+
+    socket.on('room:leave', ({ roomId }) => {
+      handleLeaveRoom(socket, roomId, io);
+    });
+
+    // ─── Chat ─────────────────────────────────────────────
+    socket.on('chat:send', async ({ roomId, message, sender, senderName }) => {
+      const chatMessage = {
+        sender,
+        senderName,
+        message,
+        timestamp: new Date(),
+      };
+
+      // Broadcast to room
+      io.to(roomId).emit('chat:receive', chatMessage);
+
+      // Persist to DB
+      try {
+        const meeting = await Meeting.findOne({ roomId });
+        if (meeting) {
+          meeting.chatHistory.push(chatMessage);
+          await meeting.save();
+        }
+      } catch (err) {
+        console.error('Error saving chat message:', err.message);
+      }
+
+      // Send notification to room
+      socket.to(roomId).emit('notification:new', {
+        type: 'chat',
+        message: `${senderName}: ${message.substring(0, 50)}`,
+        timestamp: new Date(),
+      });
+    });
+
+    // ─── Whiteboard ──────────────────────────────────────
+    socket.on('whiteboard:draw', async ({ roomId, stroke }) => {
+      // Broadcast to others in room
+      socket.to(roomId).emit('whiteboard:draw', { stroke });
+
+      // Persist stroke
+      try {
+        const meeting = await Meeting.findOne({ roomId });
+        if (meeting) {
+          await Whiteboard.findOneAndUpdate(
+            { meeting: meeting._id },
+            { $push: { strokes: stroke }, lastUpdatedBy: stroke.userId },
+          );
+        }
+      } catch (err) {
+        console.error('Error saving whiteboard stroke:', err.message);
+      }
+    });
+
+    socket.on('whiteboard:clear', async ({ roomId }) => {
+      socket.to(roomId).emit('whiteboard:clear');
+
+      try {
+        const meeting = await Meeting.findOne({ roomId });
+        if (meeting) {
+          await Whiteboard.findOneAndUpdate({ meeting: meeting._id }, { strokes: [] });
+        }
+      } catch (err) {
+        console.error('Error clearing whiteboard:', err.message);
+      }
+    });
+
+    // ─── Video Signaling (WebRTC) ─────────────────────────
+    socket.on('video:join-room', ({ roomId, user }) => {
+      // Notify existing users so they can create offers
+      socket.to(roomId).emit('video:user-joined', {
+        socketId: socket.id,
+        user,
+      });
+    });
+
+    socket.on('video:offer', ({ to, offer, from, user }) => {
+      io.to(to).emit('video:offer', { from, offer, user });
+    });
+
+    socket.on('video:answer', ({ to, answer, from }) => {
+      io.to(to).emit('video:answer', { from, answer });
+    });
+
+    socket.on('video:ice-candidate', ({ to, candidate, from }) => {
+      io.to(to).emit('video:ice-candidate', { from, candidate });
+    });
+
+    socket.on('video:leave', ({ roomId }) => {
+      socket.to(roomId).emit('video:user-left', { socketId: socket.id });
+    });
+
+    // ─── Screen Share ─────────────────────────────────────
+    socket.on('screen:start', ({ roomId, user }) => {
+      socket.to(roomId).emit('screen:started', { socketId: socket.id, user });
+    });
+
+    socket.on('screen:stop', ({ roomId }) => {
+      socket.to(roomId).emit('screen:stopped', { socketId: socket.id });
+    });
+
+    // ─── File Notifications ───────────────────────────────
+    socket.on('file:uploaded', ({ roomId, file, userName }) => {
+      socket.to(roomId).emit('file:new', { file });
+      socket.to(roomId).emit('notification:new', {
+        type: 'file',
+        message: `${userName} uploaded ${file.originalName}`,
+        timestamp: new Date(),
+      });
+    });
+
+    // ─── Presence ─────────────────────────────────────────
+    socket.on('presence:typing', ({ roomId, user }) => {
+      socket.to(roomId).emit('presence:typing', { user });
+    });
+
+    socket.on('presence:stop-typing', ({ roomId, user }) => {
+      socket.to(roomId).emit('presence:stop-typing', { user });
+    });
+
+    // ─── Disconnect ───────────────────────────────────────
+    socket.on('disconnect', () => {
+      console.log(`Socket disconnected: ${socket.id}`);
+      if (socket.roomId) {
+        handleLeaveRoom(socket, socket.roomId, io);
+      }
+    });
+  });
+};
+
+function handleLeaveRoom(socket, roomId, io) {
+  socket.leave(roomId);
+
+  if (roomUsers.has(roomId)) {
+    roomUsers.get(roomId).delete(socket.id);
+    const remaining = Array.from(roomUsers.get(roomId).values());
+
+    if (remaining.length === 0) {
+      roomUsers.delete(roomId);
+    }
+
+    io.to(roomId).emit('room:user-left', {
+      socketId: socket.id,
+      user: socket.userData,
+      users: remaining,
+    });
+  }
+}
+
+module.exports = initSocket;

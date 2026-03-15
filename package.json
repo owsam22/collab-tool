@@ -1,0 +1,15 @@
+{
+  "name": "realtime-collaboration-tool",
+  "version": "1.0.0",
+  "description": "Full-stack real-time video collaboration tool with WebRTC, Socket.io, and more",
+  "private": true,
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "start:backend": "cd backend && npm start",
+    "build:frontend": "cd frontend && npm run build"
+  },
+  "keywords": ["webrtc", "socket.io", "collaboration", "video-calling"],
+  "license": "MIT"
+}

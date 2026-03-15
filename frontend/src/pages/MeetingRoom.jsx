@@ -1,0 +1,217 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useSocket } from '../context/SocketContext';
+import { useAuth } from '../context/AuthContext';
+import API from '../api/axios';
+import VideoCall from '../components/VideoCall';
+import Chat from '../components/Chat';
+import Whiteboard from '../components/Whiteboard';
+import FileUpload from '../components/FileUpload';
+import TaskList from '../components/TaskList';
+import { HiOutlineVideoCamera, HiOutlineChatAlt2, HiOutlinePencilAlt, HiOutlineDocument, HiOutlineUserGroup, HiOutlineArrowLeft, HiOutlineDuplicate, HiOutlineInformationCircle } from 'react-icons/hi';
+
+const PANELS = {
+  CHAT: 'chat',
+  WHITEBOARD: 'whiteboard',
+  FILES: 'files',
+  TASKS: 'tasks',
+};
+
+const MeetingRoom = () => {
+  const { roomId } = useParams();
+  const { socket } = useSocket();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [meeting, setMeeting] = useState(null);
+  const [activePanel, setActivePanel] = useState(PANELS.CHAT);
+  const [participants, setParticipants] = useState([]);
+  const [showParticipants, setShowParticipants] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMeeting = async () => {
+      try {
+        const res = await API.get(`/meetings/room/${roomId}`);
+        setMeeting(res.data.meeting);
+        setParticipants(res.data.meeting.participants || []);
+
+        // Join the meeting via REST
+        await API.post(`/meetings/${res.data.meeting._id}/join`);
+      } catch (err) {
+        console.error('Failed to load meeting:', err);
+        navigate('/dashboard');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMeeting();
+  }, [roomId]);
+
+  // Join socket room
+  useEffect(() => {
+    if (!socket || !meeting) return;
+
+    socket.emit('room:join', { roomId, user: { id: user.id, name: user.name, avatar: user.avatar } });
+
+    socket.on('room:users', ({ users }) => {
+      setParticipants(users);
+    });
+
+    socket.on('room:user-joined', ({ users }) => {
+      setParticipants(users);
+    });
+
+    socket.on('room:user-left', ({ users }) => {
+      setParticipants(users);
+    });
+
+    return () => {
+      socket.emit('room:leave', { roomId });
+      socket.off('room:users');
+      socket.off('room:user-joined');
+      socket.off('room:user-left');
+    };
+  }, [socket, meeting, roomId]);
+
+  const leaveMeeting = async () => {
+    try {
+      if (meeting) await API.post(`/meetings/${meeting._id}/leave`);
+    } catch (err) { /* ignore */ }
+    navigate('/dashboard');
+  };
+
+  const copyInviteLink = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url);
+    // Ideally we'd show a toast here, but for now we'll just have the user see the visual feedback if we added any
+    alert('Meeting link copied to clipboard!');
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 64px)' }}>
+        <div className="animate-pulse-glow" style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--color-primary)' }} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+      {/* Main Video Area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Top bar */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '8px 16px', borderBottom: '1px solid var(--glass-border)',
+          background: 'rgba(15,23,42,0.5)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button className="btn-icon" onClick={leaveMeeting} style={{ width: 34, height: 34 }}>
+              <HiOutlineArrowLeft size={16} />
+            </button>
+            <div>
+              <h2 style={{ fontSize: '0.95rem', fontWeight: 600 }}>{meeting?.title || 'Meeting'}</h2>
+              <span style={{
+                fontSize: '0.65rem', color: 'var(--color-success)', fontWeight: 600,
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-success)', display: 'inline-block' }} />
+                Live
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button className="btn-secondary" onClick={copyInviteLink} 
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontSize: '0.8rem' }}>
+              <HiOutlineDuplicate size={16} /> Copy Invite
+            </button>
+            <button className="btn-icon" onClick={() => setShowParticipants(!showParticipants)}
+              style={{ width: 34, height: 34, position: 'relative' }}>
+              <HiOutlineUserGroup size={16} />
+              <span style={{
+                position: 'absolute', top: -2, right: -2,
+                background: 'var(--color-primary)', color: 'white',
+                borderRadius: '50%', width: 16, height: 16,
+                fontSize: '0.6rem', fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>{participants.length}</span>
+            </button>
+            <button className="btn-danger" onClick={leaveMeeting} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>
+              Leave
+            </button>
+          </div>
+        </div>
+
+        {/* Video area */}
+        <div style={{ flex: 1, position: 'relative' }}>
+          <VideoCall roomId={roomId} />
+
+          {/* Participants overlay */}
+          {showParticipants && (
+            <div className="glass-card animate-fade-in" style={{
+              position: 'absolute', top: 8, right: 8, width: 220,
+              padding: 12, maxHeight: 300, overflow: 'auto',
+            }}>
+              <h4 style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: 12 }}>Participants ({participants.length})</h4>
+              {participants.map((p, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: '50%',
+                    background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.7rem', fontWeight: 700,
+                  }}>
+                    {(p.name || 'U')[0].toUpperCase()}
+                  </div>
+                  <span style={{ fontSize: '0.82rem' }}>{p.name || 'User'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Side Panel */}
+      <div style={{
+        width: 360, borderLeft: '1px solid var(--glass-border)',
+        display: 'flex', flexDirection: 'column',
+        background: 'rgba(15,23,42,0.3)',
+      }}>
+        {/* Panel Tabs */}
+        <div style={{
+          display: 'flex', borderBottom: '1px solid var(--glass-border)',
+        }}>
+          {[
+            { key: PANELS.CHAT, icon: <HiOutlineChatAlt2 size={18} />, label: 'Chat' },
+            { key: PANELS.WHITEBOARD, icon: <HiOutlinePencilAlt size={18} />, label: 'Board' },
+            { key: PANELS.FILES, icon: <HiOutlineDocument size={18} />, label: 'Files' },
+            { key: PANELS.TASKS, icon: <HiOutlineInformationCircle size={18} />, label: 'Tasks' },
+          ].map((tab) => (
+            <button key={tab.key} type="button" onClick={() => setActivePanel(tab.key)}
+              style={{
+                flex: 1, padding: '12px 0', border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.2s',
+                background: activePanel === tab.key ? 'var(--color-surface-lighter)' : 'transparent',
+                color: activePanel === tab.key ? 'var(--color-primary-light)' : 'var(--color-text-muted)',
+                borderBottom: activePanel === tab.key ? '2px solid var(--color-primary)' : '2px solid transparent',
+              }}>
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Panel Content */}
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          {activePanel === PANELS.CHAT && <Chat roomId={roomId} />}
+          {activePanel === PANELS.WHITEBOARD && <Whiteboard roomId={roomId} />}
+          {activePanel === PANELS.FILES && <FileUpload roomId={roomId} meetingId={meeting?._id} />}
+          {activePanel === PANELS.TASKS && <TaskList meetingId={meeting?._id} teamId={meeting?.team} />}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default MeetingRoom;
