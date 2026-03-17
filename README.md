@@ -1,106 +1,76 @@
 # CollabSpace — Real-Time Video Collaboration Tool
 
-A full-stack MERN collaboration platform with multi-user video calling (WebRTC), screen sharing, collaborative whiteboard, file sharing, real-time chat, and role-based authentication.
+[![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen?style=for-the-badge)](https://collab-tool-self.vercel.app)
+[![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)](https://reactjs.org/)
 
-## Tech Stack
+A professional, full-stack MERN platform for real-time collaboration. Features include multi-user video conferencing (WebRTC), screen sharing, a synchronized whiteboard, instantaneous chat, and secure file sharing.
+
+🚀 **Live Frontend:** [https://collab-tool-self.vercel.app](https://collab-tool-self.vercel.app)  
+backend: [https://collab-tool-backend-9psv.onrender.com/](https://collab-tool-backend-9psv.onrender.com/)
+
+## 🛠 Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 19 + Vite + TailwindCSS |
-| Backend | Node.js + Express.js |
-| Database | MongoDB + Mongoose |
-| Real-Time | Socket.io (chat, whiteboard, presence, notifications) |
-| Video | WebRTC (peer-to-peer video/audio) |
-| Auth | JWT (JSON Web Tokens) |
-| File Storage | Local disk (Multer) |
+| **Frontend** | React 19 + Vite + TailwindCSS |
+| **Backend** | Node.js + Express.js |
+| **Database** | MongoDB Atlas |
+| **Real-Time** | Socket.io (Data Sync & Notifications) |
+| **Video/Audio**| WebRTC (Signaling via Socket.io) |
+| **Auth** | JWT (Stateless Authentication) |
+| **Deployment**| Vercel (Frontend) & Render (Backend) |
 
-## Features
+## ✨ Key Features
 
-- **Multi-user video calling** with mute, camera toggle, and adaptive grid layout
-- **Screen sharing** with one-click start/stop
-- **Collaborative whiteboard** with pen, eraser, colors, and line widths — synced in real-time
-- **Real-time chat** with typing indicators and persistent message history
-- **File sharing** with drag-and-drop upload, download, and delete
-- **Real-time notifications** (toast style) for messages and file uploads
-- **User authentication** with JWT (register/login)
-- **Role-based permissions** (Admin, Editor, Viewer)
-- **Responsive dark theme** with glassmorphism design
+- **🌐 Multi-user Video Calling**: High-quality P2P video/audio conferencing using WebRTC.
+- **🖥️ Screen Sharing**: Integrated one-click screen sharing for presentations.
+- **🎨 Collaborative Whiteboard**: Real-time synchronized drawing board with persistent state.
+- **💬 Instant Chat**: Global and room-based chat with typing indicators.
+- **📂 File Management**: Securely upload, download, and manage files within meeting rooms.
+- **🔔 Smart Notifications**: Real-time toast notifications for user actions.
+- **🔐 Secure Auth**: Robust JWT-based registration and login system.
 
-## Quick Start
+## 🚀 Quick Start
 
-### Prerequisites
-- Node.js 18+
-- MongoDB running locally
-
-### 1. Install dependencies
-
+### 1. Installation
 ```bash
 npm run install:all
 ```
 
-### 2. Configure environment
-
-```bash
-cp .env.example backend/.env
+### 2. Environment Setup
+Create a `.env` file in the `backend` directory following the architecture:
+```env
+PORT=5000
+MONGO_URI=your_mongodb_uri
+JWT_SECRET=your_secret
+CLIENT_URL=http://localhost:5173
 ```
 
-### 3. Start both servers
-
+### 3. Execution
 ```bash
-# Terminal 1 — Backend (port 5000)
+# Start Backend & Frontend
 npm run dev:backend
-
-# Terminal 2 — Frontend (port 5173)
 npm run dev:frontend
 ```
 
-### 4. Open in browser
+## 📂 Project Structure
 
-Navigate to **http://localhost:5173**
-
-## Project Structure
-
-```
-├── backend/
-│   ├── config/          # Database configuration
-│   ├── controllers/     # Route handlers (auth, user, meeting, file)
-│   ├── middleware/       # JWT auth, role authorization, file upload
-│   ├── models/          # Mongoose schemas (User, Meeting, File, Whiteboard)
-│   ├── routes/          # Express routes
-│   ├── socket/          # Socket.io event handlers
-│   └── server.js        # Entry point
-├── frontend/
+```text
+├── backend/            # Express server, Socket.io, & MongoDB Models
+├── frontend/           # React SPA with Vite & Tailwind
 │   └── src/
-│       ├── api/             # Axios instance
-│       ├── components/      # VideoCall, Chat, Whiteboard, FileUpload, etc.
-│       ├── context/         # AuthContext, SocketContext
-│       └── pages/           # Login, Dashboard, MeetingRoom, Profile
-└── README.md
+│       ├── api/        # Axios configuration for production endpoints
+│       ├── context/    # Global State (Auth & Sockets)
+│       └── components/ # Reusable UI Modules
+└── vercel.json         # SPA routing configuration
 ```
 
-## API Endpoints
+## 🛡️ Credits & Author
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/login` | Login |
-| GET | `/api/auth/me` | Get current user |
-| GET | `/api/meetings` | List user's meetings |
-| POST | `/api/meetings` | Create meeting |
-| DELETE | `/api/meetings/:id` | Delete meeting |
-| POST | `/api/meetings/:id/join` | Join meeting |
-| POST | `/api/meetings/:id/leave` | Leave meeting |
-| POST | `/api/files/upload` | Upload file |
-| GET | `/api/files/:meetingId` | List files for meeting |
-| GET | `/api/files/download/:id` | Download file |
+Developed with ❤️ by **[owsam22](https://github.com/owsam22)**.
 
-## Socket.io Events
+Repository: [https://github.com/owsam22/collab-tool](https://github.com/owsam22/collab-tool)
 
-| Event | Direction | Purpose |
-|-------|-----------|---------|
-| `room:join` | Client → Server | Join a meeting room |
-| `chat:send` / `chat:receive` | Bidirectional | Real-time chat |
-| `whiteboard:draw` / `whiteboard:clear` | Bidirectional | Whiteboard sync |
-| `video:offer` / `video:answer` / `video:ice-candidate` | Bidirectional | WebRTC signaling |
-| `notification:new` | Server → Client | Push notifications |
-| `presence:typing` | Bidirectional | Typing indicators |
+---
+*This project was built as part of a mission to create seamless, high-performance collaboration tools for modern teams.*
