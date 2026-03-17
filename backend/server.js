@@ -23,10 +23,13 @@ const taskRoutes = require('./routes/task');
 const app = express();
 const server = http.createServer(app);
 
+// Sanitize CLIENT_URL (remove trailing slash)
+const clientURL = process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, '') : 'http://localhost:5173';
+
 // Initialize Socket.io
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: clientURL,
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -43,7 +46,7 @@ if (!fs.existsSync(uploadDir)) {
 
 // ─── Middleware ──────────────────────────────────────────
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: clientURL,
   credentials: true,
 }));
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
