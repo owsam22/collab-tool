@@ -78,9 +78,15 @@ const Footer = () => {
         paddingTop: 24,
         textAlign: 'center',
         color: 'var(--color-text-muted)',
-        fontSize: '0.8rem'
+        fontSize: '0.85rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8
       }}>
-        © {new Date().getFullYear()} Collab Space. All rights reserved. Created for Code Alpha Internship.  
+        <p>© {new Date().getFullYear()} Collab Space. All rights reserved.</p>
+        <p style={{ fontWeight: 600, color: 'var(--color-primary-light)' }}>
+          Designed & Developed by <a href="https://github.com/owsam22" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dashed currentColor' }}>owsam22</a>
+        </p>
       </div>
     </footer>
   );

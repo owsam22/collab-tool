@@ -173,7 +173,7 @@ const MeetingRoom = () => {
           background: 'rgba(15,23,42,0.5)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button className="btn-icon" onClick={leaveMeeting} style={{ width: 34, height: 34 }}>
+            <button className="btn-icon" onClick={leaveMeeting} style={{ width: 34, height: 34 }} title="Back to Dashboard">
               <HiOutlineArrowLeft size={16} />
             </button>
             <div className={isMobile && activePanel === PANELS.WHITEBOARD ? 'mobile-hide' : ''}>
@@ -279,22 +279,41 @@ const MeetingRoom = () => {
           zIndex: 2,
         }}
       >
-        {/* Mobile Header for Panel */}
-        {isMobile && isMobilePanelOpen && (
-          <div style={{ 
-            padding: '12px 16px', display: 'flex', 
-            justifyContent: 'space-between', alignItems: 'center',
-            borderBottom: '1px solid var(--glass-border)',
-            background: 'rgba(15, 23, 42, 0.95)'
-          }}>
-            <h3 style={{ fontSize: '0.9rem', fontWeight: 600 }}>{activePanel.toUpperCase()}</h3>
-            <button onClick={() => setIsMobilePanelOpen(false)} style={{ 
-              color: 'var(--color-text-muted)', background: 'rgba(255,255,255,0.1)', 
-              border: 'none', borderRadius: '50%', width: 28, height: 28, fontSize: '1rem',
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>&times;</button>
+        {/* Panel Header (Desktop & Mobile) */}
+        <div style={{ 
+          padding: '12px 16px', 
+          justifyContent: 'space-between', alignItems: 'center',
+          borderBottom: '1px solid var(--glass-border)',
+          background: 'rgba(15, 23, 42, 0.95)',
+          display: (isMobile && !isMobilePanelOpen && activePanel !== PANELS.WHITEBOARD) ? 'none' : 'flex'
+        }}>
+          <h3 style={{ fontSize: '0.9rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            {activePanel}
+          </h3>
+          
+          <div style={{ display: 'flex', gap: 8 }}>
+            {activePanel === PANELS.WHITEBOARD && (
+              <button 
+                onClick={() => setActivePanel(PANELS.CHAT)}
+                className="btn-secondary"
+                style={{ 
+                  padding: '4px 12px', fontSize: '0.75rem', height: 28,
+                  display: 'flex', alignItems: 'center', gap: 6
+                }}
+              >
+                <HiOutlineVideoCamera size={14} /> Back to Call
+              </button>
+            )}
+
+            {isMobile && isMobilePanelOpen && (
+              <button onClick={() => setIsMobilePanelOpen(false)} style={{ 
+                color: 'var(--color-text-muted)', background: 'rgba(255,255,255,0.1)', 
+                border: 'none', borderRadius: '50%', width: 28, height: 28, fontSize: '1rem',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>&times;</button>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Panel Tabs */}
         <div style={{

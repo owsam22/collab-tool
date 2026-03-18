@@ -5,6 +5,7 @@ import PrivateRoute from './components/PrivateRoute';
 import Navbar from './components/Navbar';
 import Notifications from './components/Notifications';
 import Login from './pages/Login';
+import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import MeetingRoom from './pages/MeetingRoom';
 import Profile from './pages/Profile';
@@ -20,6 +21,7 @@ function App() {
           <Navbar />
           <Notifications />
           <Routes>
+            <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/dashboard" element={
               <PrivateRoute><Dashboard /></PrivateRoute>
@@ -36,7 +38,7 @@ function App() {
             <Route path="/tasks" element={
               <PrivateRoute><Tasks /></PrivateRoute>
             } />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           <Footer />
         </SocketProvider>

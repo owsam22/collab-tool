@@ -206,7 +206,7 @@ const Teams = () => {
                   <p style={{ color: 'var(--color-text-muted)', marginTop: 8 }}>{selectedTeam.description}</p>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  {!isTeamAdmin && (
+                  {(selectedTeam?.owner?._id !== user?.id && selectedTeam?.owner !== user?.id) && (
                     <button className="btn-secondary" onClick={handleLeaveTeam} style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-danger)' }}>
                       <HiOutlineLogout size={18} /> Leave
                     </button>
