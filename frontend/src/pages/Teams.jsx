@@ -73,12 +73,12 @@ const Teams = () => {
     e.preventDefault();
     if (!selectedTeam) return;
     try {
-      await API.post(`/teams/${selectedTeam._id}/members`, { email: newMemberEmail });
-      setMessage({ text: 'Member added successfully!', type: 'success' });
+      await API.post('/invitations', { teamId: selectedTeam._id, email: newMemberEmail });
+      setMessage({ text: 'Invitation sent successfully!', type: 'success' });
       setNewMemberEmail('');
-      fetchTeams(); // Refresh to show new member
+      // No need to fetchTeams here because the member list hasn't changed yet (only an invite sent)
     } catch (err) {
-      setMessage({ text: err.response?.data?.message || 'Failed to add member', type: 'error' });
+      setMessage({ text: err.response?.data?.message || 'Failed to send invitation', type: 'error' });
     }
   };
 

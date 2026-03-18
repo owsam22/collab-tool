@@ -10,6 +10,7 @@ const Dashboard = () => {
   const [meetings, setMeetings] = useState([]);
   const [teams, setTeams] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [invitations, setInvitations] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -19,14 +20,16 @@ const Dashboard = () => {
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
-        const [meetingRes, teamRes, taskRes] = await Promise.all([
+        const [meetingRes, teamRes, taskRes, inviteRes] = await Promise.all([
           API.get('/meetings'),
           API.get('/teams'),
           API.get('/tasks'),
+          API.get('/invitations/my'),
         ]);
-        setMeetings(meetingRes.data.meetings);
-        setTeams(teamRes.data.teams);
-        setTasks(taskRes.data.tasks);
+        setMeetings(meetingRes.data?.meetings || []);
+        setTeams(teamRes.data?.teams || []);
+        setTasks(taskRes.data?.tasks || []);
+        setInvitations(inviteRes.data?.invitations || []);
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
       } finally {
@@ -81,6 +84,19 @@ const Dashboard = () => {
   const joinMeeting = (meeting) => {
     navigate(`/meeting/${meeting.roomId}`);
   };
+  
+  const handleInvitationResponse = async (invitationId, status) => {
+    try {
+      await API.put(`/invitations/${invitationId}/respond`, { status });
+      setInvitations(invitations.filter(i => i._id !== invitationId));
+      if (status === 'accepted') {
+        const teamRes = await API.get('/teams');
+        setTeams(teamRes.data.teams);
+      }
+    } catch (err) {
+      console.error('Failed to respond to invitation:', err);
+    }
+  };
 
   const statusColors = {
     scheduled: 'var(--color-warning)',
@@ -107,6 +123,35 @@ const Dashboard = () => {
           <HiOutlinePlus size={18} /> New Meeting
         </button>
       </div>
+
+      {/* Pending Invitations */}
+      {invitations.length > 0 && (
+        <div className="animate-slide-up" style={{ marginBottom: 32 }}>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <HiOutlineUserGroup style={{ color: 'var(--color-primary-light)' }} /> Pending Invitations
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+            {invitations.map(invite => (
+              <div key={invite._id} className="glass-card" style={{ padding: 20, border: '1px solid var(--color-primary-light)' }}>
+                <div style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: 4 }}>{invite.team?.name || 'Team'}</div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: 16 }}>
+                  Invited by <span style={{ color: 'var(--color-text)' }}>{invite.inviter?.name || 'Someone'}</span>
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn-primary" 
+                    onClick={() => handleInvitationResponse(invite._id, 'accepted')}
+                    style={{ flex: 1, padding: '8px' }}
+                  >Accept</button>
+                  <button className="btn-secondary" 
+                    onClick={() => handleInvitationResponse(invite._id, 'declined')}
+                    style={{ flex: 1, padding: '8px' }}
+                  >Decline</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {teams.length === 0 && (
         <div className="glass-card animate-fade-in" style={{ padding: '24px 32px', marginBottom: 32, border: '1px solid var(--color-warning)' }}>

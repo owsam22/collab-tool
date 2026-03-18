@@ -18,6 +18,7 @@ const meetingRoutes = require('./routes/meeting');
 const fileRoutes = require('./routes/file');
 const teamRoutes = require('./routes/team');
 const taskRoutes = require('./routes/task');
+const invitationRoutes = require('./routes/invitation');
 
 // Initialize Express
 const app = express();
@@ -77,6 +78,7 @@ app.use('/api/meetings', meetingRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/invitations', invitationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

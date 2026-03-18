@@ -140,7 +140,6 @@ module.exports = {
   getTeam,
   updateTeam,
   deleteTeam,
-  addMember,
   removeMember,
   leaveTeam,
 };
