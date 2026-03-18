@@ -7,6 +7,8 @@ const {
   updateTeam,
   deleteTeam,
   addMember,
+  removeMember,
+  leaveTeam,
 } = require('../controllers/teamController');
 const { protect } = require('../middleware/auth');
 
@@ -22,5 +24,7 @@ router.route('/:id')
   .delete(deleteTeam);
 
 router.post('/:id/members', addMember);
+router.post('/:id/leave', leaveTeam);
+router.delete('/:id/members/:userId', removeMember);
 
 module.exports = router;

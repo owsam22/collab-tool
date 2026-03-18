@@ -23,6 +23,8 @@ const Notifications = () => {
     switch (type) {
       case 'chat': return <HiOutlineChatAlt2 size={16} />;
       case 'file': return <HiOutlineDocument size={16} />;
+      case 'meeting': return <HiOutlineVideoCamera size={16} />;
+      case 'team': return <HiOutlineUserGroup size={16} />;
       default: return <HiOutlineVideoCamera size={16} />;
     }
   };
@@ -31,6 +33,8 @@ const Notifications = () => {
     switch (type) {
       case 'chat': return 'var(--color-accent)';
       case 'file': return 'var(--color-warning)';
+      case 'meeting': return 'var(--color-success)';
+      case 'team': return 'var(--color-primary)';
       default: return 'var(--color-primary)';
     }
   };

@@ -17,8 +17,19 @@ const getTasks = async (req, res) => {
     const { teamId, meetingId } = req.query;
     let query = { $or: [{ createdBy: req.user.id }, { assignedTo: req.user.id }] };
     
-    if (teamId) query = { team: teamId };
-    if (meetingId) query = { meeting: meetingId };
+    if (teamId) {
+      query = { team: teamId };
+    } else if (meetingId) {
+      query = { meeting: meetingId };
+    } else {
+      // Strictly personal tasks if no team/meeting specified
+      query = { 
+        $or: [
+          { assignedTo: req.user._id },
+          { createdBy: req.user._id }
+        ]
+      };
+    }
 
     const tasks = await Task.find(query).populate('assignedTo createdBy team meeting');
     res.json({ tasks });

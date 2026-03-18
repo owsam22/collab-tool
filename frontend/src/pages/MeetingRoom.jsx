@@ -8,7 +8,7 @@ import Chat from '../components/Chat';
 import Whiteboard from '../components/Whiteboard';
 import FileUpload from '../components/FileUpload';
 import TaskList from '../components/TaskList';
-import { HiOutlineVideoCamera, HiOutlineChatAlt2, HiOutlinePencilAlt, HiOutlineDocument, HiOutlineUserGroup, HiOutlineArrowLeft, HiOutlineDuplicate, HiOutlineInformationCircle } from 'react-icons/hi';
+import { HiOutlineVideoCamera, HiOutlineChatAlt2, HiOutlinePencilAlt, HiOutlineDocument, HiOutlineUserGroup, HiOutlineArrowLeft, HiOutlineDuplicate, HiOutlineInformationCircle, HiOutlineTrash } from 'react-icons/hi';
 
 const PANELS = {
   CHAT: 'chat',
@@ -27,6 +27,7 @@ const MeetingRoom = () => {
   const [participants, setParticipants] = useState([]);
   const [showParticipants, setShowParticipants] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
 
   useEffect(() => {
     const fetchMeeting = async () => {
@@ -80,6 +81,17 @@ const MeetingRoom = () => {
     navigate('/dashboard');
   };
 
+  const handleDeleteMeeting = async () => {
+    if (!window.confirm('Are you sure you want to PERMANENTLY delete this meeting for everyone?')) return;
+    try {
+      await API.delete(`/meetings/${meeting._id}`);
+      navigate('/dashboard');
+    } catch (err) {
+      console.error('Failed to delete meeting:', err);
+      alert('Failed to delete meeting');
+    }
+  };
+
   const copyInviteLink = () => {
     const url = window.location.href;
     navigator.clipboard.writeText(url);
@@ -96,7 +108,7 @@ const MeetingRoom = () => {
   }
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+    <div className="meeting-layout" style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
       {/* Main Video Area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {/* Top bar */}
@@ -126,7 +138,7 @@ const MeetingRoom = () => {
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontSize: '0.8rem' }}>
               <HiOutlineDuplicate size={16} /> Copy Invite
             </button>
-            <button className="btn-icon" onClick={() => setShowParticipants(!showParticipants)}
+            <button className="btn-icon mobile-hide" onClick={() => setShowParticipants(!showParticipants)}
               style={{ width: 34, height: 34, position: 'relative' }}>
               <HiOutlineUserGroup size={16} />
               <span style={{
@@ -137,6 +149,16 @@ const MeetingRoom = () => {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>{participants.length}</span>
             </button>
+            <button className="btn-icon mobile-show-flex" onClick={() => setIsMobilePanelOpen(!isMobilePanelOpen)}
+              style={{ width: 34, height: 34, display: 'none' }}>
+               <HiOutlineChatAlt2 size={16} />
+            </button>
+            {(meeting?.host._id === user.id || meeting?.host === user.id) && (
+              <button className="btn-icon" onClick={handleDeleteMeeting} 
+                style={{ width: 34, height: 34, color: 'var(--color-danger)' }} title="Delete Meeting">
+                <HiOutlineTrash size={16} />
+              </button>
+            )}
             <button className="btn-danger" onClick={leaveMeeting} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>
               Leave
             </button>
@@ -150,8 +172,8 @@ const MeetingRoom = () => {
           {/* Participants overlay */}
           {showParticipants && (
             <div className="glass-card animate-fade-in" style={{
-              position: 'absolute', top: 8, right: 8, width: 220,
-              padding: 12, maxHeight: 300, overflow: 'auto',
+              position: 'absolute', top: 8, right: 8, width: 'calc(100% - 16px)', maxWidth: 220,
+              padding: 12, maxHeight: 300, overflow: 'auto', zIndex: 5,
             }}>
               <h4 style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: 12 }}>Participants ({participants.length})</h4>
               {participants.map((p, i) => (
@@ -173,14 +195,29 @@ const MeetingRoom = () => {
       </div>
 
       {/* Side Panel */}
-      <div style={{
-        width: 360, borderLeft: '1px solid var(--glass-border)',
-        display: 'flex', flexDirection: 'column',
-        background: 'rgba(15,23,42,0.3)',
-      }}>
+      <div 
+        className={`side-panel ${isMobilePanelOpen ? 'open' : ''}`}
+        style={{
+          width: 360, borderLeft: '1px solid var(--glass-border)',
+          display: 'flex', flexDirection: 'column',
+          background: 'rgba(30, 41, 59, 0.95)',
+        }}
+      >
+        {/* Mobile Header for Panel */}
+        <div className="mobile-only" style={{ 
+          padding: '12px 16px', display: 'none', 
+          justifyContent: 'space-between', alignItems: 'center',
+          borderBottom: '1px solid var(--glass-border)',
+          background: 'var(--color-surface-light)'
+        }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>Options</h3>
+          <button onClick={() => setIsMobilePanelOpen(false)} style={{ color: 'var(--color-text-muted)', background: 'none', border: 'none', fontSize: '1.2rem' }}>&times;</button>
+        </div>
+
         {/* Panel Tabs */}
         <div style={{
           display: 'flex', borderBottom: '1px solid var(--glass-border)',
+          overflowX: 'auto'
         }}>
           {[
             { key: PANELS.CHAT, icon: <HiOutlineChatAlt2 size={18} />, label: 'Chat' },
@@ -190,14 +227,15 @@ const MeetingRoom = () => {
           ].map((tab) => (
             <button key={tab.key} type="button" onClick={() => setActivePanel(tab.key)}
               style={{
-                flex: 1, padding: '12px 0', border: 'none', cursor: 'pointer',
+                flex: 1, padding: '12px 8px', border: 'none', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.2s',
+                fontSize: '0.75rem', fontWeight: 600, transition: 'all 0.2s',
                 background: activePanel === tab.key ? 'var(--color-surface-lighter)' : 'transparent',
                 color: activePanel === tab.key ? 'var(--color-primary-light)' : 'var(--color-text-muted)',
                 borderBottom: activePanel === tab.key ? '2px solid var(--color-primary)' : '2px solid transparent',
+                minWidth: '80px'
               }}>
-              {tab.icon} {tab.label}
+              {tab.icon} <span className="mobile-hide">{tab.label}</span>
             </button>
           ))}
         </div>
@@ -207,7 +245,7 @@ const MeetingRoom = () => {
           {activePanel === PANELS.CHAT && <Chat roomId={roomId} />}
           {activePanel === PANELS.WHITEBOARD && <Whiteboard roomId={roomId} />}
           {activePanel === PANELS.FILES && <FileUpload roomId={roomId} meetingId={meeting?._id} />}
-          {activePanel === PANELS.TASKS && <TaskList meetingId={meeting?._id} teamId={meeting?.team} />}
+          {activePanel === PANELS.TASKS && <TaskList meetingId={meeting?._id} teamId={meeting?.team?._id || meeting?.team} />}
         </div>
       </div>
     </div>

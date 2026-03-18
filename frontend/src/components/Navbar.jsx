@@ -52,7 +52,7 @@ const Navbar = () => {
         </span>
       </Link>
 
-      <div style={{ display: 'flex', gap: 20 }}>
+      <div className="nav-links" style={{ display: 'flex', gap: 20 }}>
         <Link to="/dashboard" style={{ 
           fontSize: '0.9rem', fontWeight: 600, color: location.pathname === '/dashboard' ? 'var(--color-primary-light)' : 'var(--color-text-muted)',
           textDecoration: 'none'
@@ -64,6 +64,12 @@ const Navbar = () => {
           textDecoration: 'none'
         }}>
           Teams
+        </Link>
+        <Link to="/tasks" style={{ 
+          fontSize: '0.9rem', fontWeight: 600, color: location.pathname === '/tasks' ? 'var(--color-primary-light)' : 'var(--color-text-muted)',
+          textDecoration: 'none'
+        }}>
+          Tasks
         </Link>
       </div>
 

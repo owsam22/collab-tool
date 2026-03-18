@@ -9,6 +9,11 @@ const initSocket = (io) => {
     console.log(`Socket connected: ${socket.id}`);
 
     // ─── Room Management ──────────────────────────────────
+    socket.on('team:join', ({ teamId }) => {
+      socket.join(`team:${teamId}`);
+      console.log(`Socket ${socket.id} joined team:${teamId}`);
+    });
+
     socket.on('room:join', async ({ roomId, user }) => {
       socket.join(roomId);
       socket.roomId = roomId;

@@ -61,6 +61,12 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// Attach io to req
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, uploadDir)));
 

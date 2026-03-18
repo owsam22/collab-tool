@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import API from '../api/axios';
 import { HiOutlinePlus, HiOutlineVideoCamera, HiOutlineClock, HiOutlineUserGroup, HiOutlineTrash } from 'react-icons/hi';
@@ -34,6 +34,10 @@ const Dashboard = () => {
       }
     };
     loadDashboardData();
+
+    // Auto-sync every 10 seconds for real-time status updates (Google Meet style)
+    const syncInterval = setInterval(loadDashboardData, 10000);
+    return () => clearInterval(syncInterval);
   }, []);
 
   const fetchMeetings = async () => {
@@ -99,10 +103,23 @@ const Dashboard = () => {
             Manage your meetings and collaboration sessions
           </p>
         </div>
-        <button className="btn-primary" onClick={() => setShowCreate(!showCreate)}>
+        <button className="btn-primary" onClick={() => setShowCreate(!showCreate)} disabled={teams.length === 0}>
           <HiOutlinePlus size={18} /> New Meeting
         </button>
       </div>
+
+      {teams.length === 0 && (
+        <div className="glass-card animate-fade-in" style={{ padding: '24px 32px', marginBottom: 32, border: '1px solid var(--color-warning)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <HiOutlineUserGroup size={32} color="var(--color-warning)" />
+            <div>
+              <p style={{ fontWeight: 700 }}>You are not in any teams!</p>
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>You must join or create a team before you can host a meeting.</p>
+              <Link to="/teams" style={{ display: 'inline-block', marginTop: 8, fontSize: '0.85rem', color: 'var(--color-primary-light)', fontWeight: 600 }}>Go to Teams &rarr;</Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Meeting Form */}
       {showCreate && (
@@ -123,8 +140,9 @@ const Dashboard = () => {
             <select 
               className="input-field"
               value={selectedTeamId} onChange={e => setSelectedTeamId(e.target.value)}
+              required
             >
-              <option value="">Personal Meeting (No Team)</option>
+              <option value="" disabled>Select a Team to start meeting</option>
               {teams.map(t => (
                 <option key={t._id} value={t._id}>Team: {t.name}</option>
               ))}
@@ -141,26 +159,45 @@ const Dashboard = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
         {[
           { label: 'Total Meetings', value: meetings.length, icon: <HiOutlineVideoCamera size={22} />, color: 'var(--color-primary)' },
-          { label: 'My Teams', value: teams.length, icon: <HiOutlineUserGroup size={22} />, color: 'var(--color-accent)' },
-          { label: 'Assigned Tasks', value: tasks.filter(t => t.status !== 'done').length, icon: <HiOutlineClock size={22} />, color: 'var(--color-warning)' },
+          { label: 'My Teams', value: teams.length, icon: <HiOutlineUserGroup size={22} />, color: 'var(--color-accent)', link: '/teams' },
+          { label: 'Assigned Tasks', value: tasks.filter(t => t.status !== 'done').length, icon: <HiOutlineClock size={22} />, color: 'var(--color-warning)', link: '/tasks' },
         ].map((stat, i) => (
-          <div key={i} className="glass-card" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{
-              background: `${stat.color}22`, color: stat.color,
-              width: 44, height: 44, borderRadius: 10,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>{stat.icon}</div>
-            <div>
-              <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>{stat.value}</p>
-              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{stat.label}</p>
+          stat.link ? (
+            <Link key={i} to={stat.link} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <div className="glass-card" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', transition: 'all 0.2s', border: '1px solid var(--glass-border)' }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--glass-border)'}
+              >
+                <div style={{
+                  background: `${stat.color}22`, color: stat.color,
+                  width: 44, height: 44, borderRadius: 10,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>{stat.icon}</div>
+                <div>
+                  <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>{stat.value}</p>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{stat.label}</p>
+                </div>
+              </div>
+            </Link>
+          ) : (
+            <div key={i} className="glass-card" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{
+                background: `${stat.color}22`, color: stat.color,
+                width: 44, height: 44, borderRadius: 10,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>{stat.icon}</div>
+              <div>
+                <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>{stat.value}</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{stat.label}</p>
+              </div>
             </div>
-          </div>
+          )
         ))}
       </div>
 
       {/* Meeting List */}
       <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 16 }}>Your Meetings</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+      <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
         {loading ? (
           <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-muted)', gridColumn: '1 / -1' }}>Loading...</div>
         ) : meetings.length === 0 ? (
@@ -210,10 +247,17 @@ const Dashboard = () => {
                 </span>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn-primary" onClick={() => joinMeeting(meeting)} style={{ flex: 1, justifyContent: 'center', padding: '8px 16px' }}>
-                  <HiOutlineVideoCamera size={16} /> Join
+                <button 
+                  className={`btn-primary ${meeting.status === 'active' ? 'pulse' : ''}`} 
+                  onClick={() => joinMeeting(meeting)} 
+                  style={{ 
+                    flex: 1, justifyContent: 'center', padding: '8px 16px',
+                    background: meeting.status === 'active' ? 'var(--color-success)' : 'var(--color-primary)'
+                  }}
+                >
+                  <HiOutlineVideoCamera size={16} /> {meeting.status === 'active' ? 'Join Now (Live)' : 'Join'}
                 </button>
-                {(meeting.host === user?.id || user?.role === 'admin') && (
+                {(meeting.host._id === user?.id || meeting.host === user?.id || user?.role === 'admin') && (
                   <button className="btn-icon" onClick={(e) => { e.stopPropagation(); deleteMeeting(meeting._id); }}
                     style={{ color: 'var(--color-danger)' }}>
                     <HiOutlineTrash size={16} />

@@ -1,22 +1,44 @@
 const Meeting = require('../models/Meeting');
 const Whiteboard = require('../models/Whiteboard');
+const Team = require('../models/Team');
 const { v4: uuidv4 } = require('uuid');
 
 // @desc    Create a new meeting
 // @route   POST /api/meetings
 exports.createMeeting = async (req, res) => {
   try {
-    const { title, description, scheduledAt } = req.body;
+    const { title, description, scheduledAt, team: teamId } = req.body;
     const roomId = uuidv4();
+
+    if (!teamId) {
+      return res.status(400).json({ success: false, message: 'Assigning a team is required for all meetings.' });
+    }
+
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ success: false, message: 'Team not found.' });
+    }
+
+    const isMember = team.owner.toString() === req.user._id.toString() || 
+                     team.members.some(m => m.user.toString() === req.user._id.toString());
+    
+    if (!isMember && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'You must be a member of the team to create a meeting.' });
+    }
 
     const meeting = await Meeting.create({
       title,
       description,
       host: req.user._id,
       roomId,
+      team: teamId,
       scheduledAt: scheduledAt || Date.now(),
       participants: [{ user: req.user._id, role: 'admin' }],
     });
+
+    // Update the Team model
+    team.meetings.push(meeting._id);
+    await team.save();
 
     // Create associated whiteboard
     await Whiteboard.create({ meeting: meeting._id });
@@ -24,6 +46,13 @@ exports.createMeeting = async (req, res) => {
     const populated = await Meeting.findById(meeting._id)
       .populate('host', 'name email avatar')
       .populate('participants.user', 'name email avatar');
+
+    // Notify team members
+    req.io.to(`team:${teamId}`).emit('notification:new', {
+      type: 'meeting',
+      message: `New meeting "${title}" scheduled in your team.`,
+      timestamp: new Date(),
+    });
 
     res.status(201).json({ success: true, meeting: populated });
   } catch (error) {
@@ -35,9 +64,27 @@ exports.createMeeting = async (req, res) => {
 // @route   GET /api/meetings
 exports.getMeetings = async (req, res) => {
   try {
-    const meetings = await Meeting.find({
-      $or: [{ host: req.user._id }, { 'participants.user': req.user._id }],
-    })
+    const { teamId } = req.query;
+    let query = {
+      $or: [
+        { host: req.user._id },
+        { 'participants.user': req.user._id },
+      ],
+    };
+
+    if (teamId) {
+      query = { team: teamId };
+    } else {
+      // Also get meetings for teams the user belongs to
+      const Team = require('../models/Team');
+      const userTeams = await Team.find({ 'members.user': req.user._id }).select('_id');
+      const teamIds = userTeams.map(t => t._id);
+      if (teamIds.length > 0) {
+        query.$or.push({ team: { $in: teamIds } });
+      }
+    }
+
+    const meetings = await Meeting.find(query)
       .populate('host', 'name email avatar')
       .populate('participants.user', 'name email avatar')
       .sort({ createdAt: -1 });
@@ -159,8 +206,12 @@ exports.joinMeeting = async (req, res) => {
     }
 
     if (meeting.status === 'scheduled') {
-      meeting.status = 'active';
-      await meeting.save();
+      const isHost = meeting.host.toString() === req.user._id.toString();
+      const isAdmin = req.user.role === 'admin';
+      if (isHost || isAdmin) {
+        meeting.status = 'active';
+        await meeting.save();
+      }
     }
 
     const populated = await Meeting.findById(meeting._id)

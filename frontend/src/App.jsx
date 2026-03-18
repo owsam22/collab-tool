@@ -9,6 +9,8 @@ import Dashboard from './pages/Dashboard';
 import MeetingRoom from './pages/MeetingRoom';
 import Profile from './pages/Profile';
 import Teams from './pages/Teams';
+import Tasks from './pages/Tasks';
+import Footer from './components/Footer';
 
 function App() {
   return (
@@ -31,8 +33,12 @@ function App() {
             <Route path="/teams" element={
               <PrivateRoute><Teams /></PrivateRoute>
             } />
+            <Route path="/tasks" element={
+              <PrivateRoute><Tasks /></PrivateRoute>
+            } />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
+          <Footer />
         </SocketProvider>
       </AuthProvider>
     </Router>

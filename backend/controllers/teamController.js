@@ -10,6 +10,7 @@ const createTeam = async (req, res) => {
       owner: req.user.id,
       members: [{ user: req.user.id, role: 'admin' }],
     });
+    await team.populate('owner members.user meetings');
     res.status(201).json({ team });
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -46,6 +47,13 @@ const updateTeam = async (req, res) => {
 
 const deleteTeam = async (req, res) => {
   try {
+    const team = await Team.findById(req.params.id);
+    if (!team) return res.status(404).json({ message: 'Team not found' });
+    
+    if (team.owner.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to delete this team' });
+    }
+
     await Team.findByIdAndDelete(req.params.id);
     res.json({ message: 'Team deleted' });
   } catch (err) {
@@ -66,7 +74,61 @@ const addMember = async (req, res) => {
 
     team.members.push({ user: userToAdd._id, role: 'member' });
     await team.save();
+    await team.populate('owner members.user meetings');
+
+    // Notify team members
+    req.io.to(`team:${team._id}`).emit('notification:new', {
+      type: 'team',
+      message: `${userToAdd.name} joined the team!`,
+      timestamp: new Date(),
+    });
+
     res.json({ team });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+const removeMember = async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.id);
+    if (!team) return res.status(404).json({ message: 'Team not found' });
+
+    if (team.owner.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to remove members' });
+    }
+
+    const userIdToRemove = req.params.userId;
+    if (team.owner.toString() === userIdToRemove) {
+      return res.status(400).json({ message: 'Owner cannot be removed' });
+    }
+
+    team.members = team.members.filter(m => m.user.toString() !== userIdToRemove);
+    await team.save();
+    await team.populate('owner members.user meetings');
+    res.json({ team });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+const leaveTeam = async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.id);
+    if (!team) return res.status(404).json({ message: 'Team not found' });
+
+    if (team.owner.toString() === req.user.id) {
+      return res.status(400).json({ message: 'Owner cannot leave the team. Delete the team instead.' });
+    }
+
+    const isMember = team.members.find(m => m.user.toString() === req.user.id);
+    if (!isMember) {
+      return res.status(400).json({ message: 'You are not a member of this team' });
+    }
+
+    team.members = team.members.filter(m => m.user.toString() !== req.user.id);
+    await team.save();
+    res.json({ message: 'Successfully left the team' });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -79,4 +141,6 @@ module.exports = {
   updateTeam,
   deleteTeam,
   addMember,
+  removeMember,
+  leaveTeam,
 };

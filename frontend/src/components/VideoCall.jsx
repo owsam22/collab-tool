@@ -201,6 +201,10 @@ const VideoCall = ({ roomId }) => {
       socket.emit('screen:stop', { roomId });
       setIsScreenSharing(false);
     } else {
+      if (!navigator.mediaDevices.getDisplayMedia) {
+        alert('Screen sharing is not supported on this device/browser.');
+        return;
+      }
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         screenStreamRef.current = screenStream;
@@ -231,14 +235,23 @@ const VideoCall = ({ roomId }) => {
 
   const peerEntries = Object.entries(peers);
   const totalVideos = 1 + peerEntries.length;
-  const gridCols = totalVideos <= 1 ? 1 : totalVideos <= 4 ? 2 : 3;
+  
+  // Responsive grid logic
+  const isMobile = window.innerWidth <= 768;
+  let gridCols;
+  if (isMobile) {
+    gridCols = totalVideos <= 1 ? 1 : 2;
+  } else {
+    gridCols = totalVideos <= 1 ? 1 : totalVideos <= 4 ? 2 : 3;
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Video Grid */}
-      <div style={{
+      <div className="video-grid" style={{
         flex: 1, display: 'grid',
         gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
+        gridAutoRows: isMobile ? '200px' : '1fr',
         gap: 8, padding: 8, overflow: 'auto',
       }}>
         {/* Local Video */}
@@ -266,20 +279,31 @@ const VideoCall = ({ roomId }) => {
       </div>
 
       {/* Controls */}
-      <div style={{
-        display: 'flex', justifyContent: 'center', gap: 12,
-        padding: '12px 0', borderTop: '1px solid var(--glass-border)',
+      <div className="video-controls" style={{
+        display: 'flex', justifyContent: 'center', gap: isMobile ? 8 : 12,
+        padding: isMobile ? '16px 8px' : '12px 0', 
+        borderTop: '1px solid var(--glass-border)',
+        background: isMobile ? 'rgba(15, 23, 42, 0.8)' : 'transparent',
       }}>
         <button className={`btn-icon ${isMuted ? '' : 'active'}`} onClick={toggleMute}
-          style={isMuted ? { background: 'var(--color-danger)' } : {}}>
-          {isMuted ? <HiOutlineVolumeOff size={18} /> : <HiOutlineMicrophone size={18} />}
+          style={{ 
+            ...(isMuted ? { background: 'var(--color-danger)' } : {}),
+            width: isMobile ? 50 : 40, height: isMobile ? 50 : 40, borderRadius: isMobile ? '50%' : 10 
+          }}>
+          {isMuted ? <HiOutlineVolumeOff size={isMobile ? 22 : 18} /> : <HiOutlineMicrophone size={isMobile ? 22 : 18} />}
         </button>
         <button className={`btn-icon ${isVideoOff ? '' : 'active'}`} onClick={toggleVideo}
-          style={isVideoOff ? { background: 'var(--color-danger)' } : {}}>
-          {isVideoOff ? <HiOutlineEyeOff size={18} /> : <HiOutlineVideoCamera size={18} />}
+          style={{ 
+            ...(isVideoOff ? { background: 'var(--color-danger)' } : {}),
+            width: isMobile ? 50 : 40, height: isMobile ? 50 : 40, borderRadius: isMobile ? '50%' : 10 
+          }}>
+          {isVideoOff ? <HiOutlineEyeOff size={isMobile ? 22 : 18} /> : <HiOutlineVideoCamera size={isMobile ? 22 : 18} />}
         </button>
-        <button className={`btn-icon ${isScreenSharing ? 'active' : ''}`} onClick={toggleScreenShare}>
-          <HiOutlineDesktopComputer size={18} />
+        <button className={`btn-icon ${isScreenSharing ? 'active' : ''}`} onClick={toggleScreenShare}
+          style={{ 
+            width: isMobile ? 50 : 40, height: isMobile ? 50 : 40, borderRadius: isMobile ? '50%' : 10 
+          }}>
+          <HiOutlineDesktopComputer size={isMobile ? 22 : 18} />
         </button>
       </div>
     </div>
