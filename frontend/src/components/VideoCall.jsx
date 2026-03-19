@@ -11,7 +11,7 @@ const VideoCall = ({ roomId }) => {
   const [localStream, setLocalStream] = useState(null);
   const [peers, setPeers] = useState({});
   const [isMuted, setIsMuted] = useState(true);
-  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
 
   const localVideoRef = useRef(null);
@@ -94,6 +94,8 @@ const VideoCall = ({ roomId }) => {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         // Disable audio by default as per requirement
         stream.getAudioTracks().forEach(track => track.enabled = false);
+        // Disable video by default as per requirement
+        stream.getVideoTracks().forEach(track => track.enabled = false);
         localStreamRef.current = stream;
         setLocalStream(stream);
         if (localVideoRef.current) {
