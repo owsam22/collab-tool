@@ -10,7 +10,7 @@ const VideoCall = ({ roomId }) => {
   const { user } = useAuth();
   const [localStream, setLocalStream] = useState(null);
   const [peers, setPeers] = useState({});
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
 
@@ -92,6 +92,8 @@ const VideoCall = ({ roomId }) => {
           audio: true 
         };
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        // Disable audio by default as per requirement
+        stream.getAudioTracks().forEach(track => track.enabled = false);
         localStreamRef.current = stream;
         setLocalStream(stream);
         if (localVideoRef.current) {
@@ -102,6 +104,8 @@ const VideoCall = ({ roomId }) => {
         // Try audio only
         try {
           const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          // Disable audio by default as per requirement
+          audioStream.getAudioTracks().forEach(track => track.enabled = false);
           localStreamRef.current = audioStream;
           setLocalStream(audioStream);
         } catch (audioErr) {
@@ -256,6 +260,8 @@ const VideoCall = ({ roomId }) => {
       // Stop screen sharing, revert to camera
       screenStreamRef.current?.getTracks().forEach((t) => t.stop());
       const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      // Respect current mute state when switching back to camera
+      cameraStream.getAudioTracks().forEach(track => track.enabled = !isMuted);
       localStreamRef.current = cameraStream;
       setLocalStream(cameraStream);
       if (localVideoRef.current) localVideoRef.current.srcObject = cameraStream;
