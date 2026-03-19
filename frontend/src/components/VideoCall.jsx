@@ -222,6 +222,13 @@ const VideoCall = ({ roomId }) => {
       });
     }
   }, [isVideoOff, isMuted, socket, roomId]);
+  
+  // Sync local video element with stream whenever it's rendered
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream, isVideoOff, isScreenSharing]);
 
   // Sync local tracks with existing peer connections once stream is ready
   useEffect(() => {
